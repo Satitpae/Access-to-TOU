@@ -5,10 +5,20 @@
 <title>Access to TOU</title>
 <style>
 *{box-sizing:border-box}body{margin:0;background:#edf3f5;color:#142c38;font:16px/1.5 system-ui,sans-serif}main{max-width:760px;margin:8vh auto;padding:24px}h1{font-size:clamp(32px,7vw,56px);letter-spacing:-.05em;margin:0}p{margin:4px 0 22px;color:#48616d}.panel{background:white;border:1px solid #ccdde4;border-radius:16px;padding:22px}header,footer,label{display:flex;align-items:center;gap:14px}header,footer{justify-content:space-between;flex-wrap:wrap}label{padding:15px 0;border-bottom:1px solid #e0eaee}label span{margin-left:auto;color:#48616d;text-align:right}input{width:19px;height:19px;accent-color:#006d70}button{border:0;background:#006d70;color:white;padding:10px 15px;border-radius:9px;font:inherit;cursor:pointer}button.secondary{background:#e7f4f4;color:#00575a}button:disabled{opacity:.55;cursor:default}footer{margin-top:20px}small{color:#48616d}#downloads{display:grid;gap:8px;margin-top:12px}a{color:#006568}
+.preview{margin-bottom:18px}.preview h2{margin:0;font-size:1.25rem}.preview nav{display:flex;flex-wrap:wrap;gap:8px;margin:16px 0}.preview nav button{background:#e7f4f4;color:#00575a}.preview nav button[aria-pressed=true]{background:#006d70;color:white}.preview label{display:inline-flex;padding:0;border:0}.preview select{font:inherit;padding:6px;border:1px solid #a4bec8;border-radius:6px}.preview table{width:100%;border-collapse:collapse;font-variant-numeric:tabular-nums}.preview td,.preview th{text-align:left;padding:8px;border-bottom:1px solid #e0eaee}.review-table{overflow:auto;max-height:430px}.review-table th{position:sticky;top:0;background:#f3f8fa}.preview svg{width:100%;height:auto}.preview h3{margin:12px 0 4px}.review-controls{display:flex;gap:12px;flex-wrap:wrap;margin:12px 0}.preview p{margin:8px 0}.missing{color:#9b4018}
 </style>
 <main>
 <h1>Access to TOU</h1>
 <p>หน้าทดสอบด้วยข้อมูลจำลอง · <a href="https://github.com/Satitpae/Access-to-TOU#readme">ดาวน์โหลดโปรแกรมสำหรับไฟล์ Access จริง</a></p>
+<section class="panel preview" aria-label="ตรวจข้อมูลก่อนส่งออก">
+<header><h2>ตรวจข้อมูลรายเดือน</h2><label class="month-picker">เดือน <select id="review-month"></select></label></header>
+<nav aria-label="มุมมองข้อมูล">
+<button type="button" data-view="bill">บิลรายเดือน</button>
+<button type="button" data-view="chart">กราฟรายเดือน</button>
+<button type="button" data-view="period">ข้อมูลแต่ละ Period</button>
+</nav>
+<div id="review"></div>
+</section>
 <section class="panel">
 <header><strong>เดือนที่มีข้อมูล</strong><button class="secondary" id="toggle" type="button">เลือกทั้งหมด</button></header>
 <div id="months"></div>
@@ -25,10 +35,11 @@ const records = ['2026-11','2026-10'].map((month, n) => {
   view.setUint16(8,64,true);
   bytes.set(new TextEncoder().encode('01/' + month.slice(5) + '/202600:00:00'),10);
   for (let i=0;i<96;i++) {
+    if(i===42) continue;
     view.setFloat64(64+i*16,40+i%20+n,true);
     view.setFloat64(72+i*16,100000+i*10,true);
   }
-  return {month,name:n ? 'D18Oct26.tou' : 'D18Nov26.tou',slots:96,data:btoa(String.fromCharCode(...bytes))};
+  return {month,name:n ? 'D18Oct26.tou' : 'D18Nov26.tou',slots:95,data:btoa(String.fromCharCode(...bytes))};
 });
 const months = document.querySelector('#months');
 const downloads = document.querySelector('#downloads');
@@ -78,4 +89,5 @@ exportButton.addEventListener('click', () => {
 });
 update();
 </script>
+<script src="review.js"></script>
 </html>
