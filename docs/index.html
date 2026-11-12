@@ -1,0 +1,81 @@
+<!doctype html>
+<html lang="th">
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Access to TOU</title>
+<style>
+*{box-sizing:border-box}body{margin:0;background:#edf3f5;color:#142c38;font:16px/1.5 system-ui,sans-serif}main{max-width:760px;margin:8vh auto;padding:24px}h1{font-size:clamp(32px,7vw,56px);letter-spacing:-.05em;margin:0}p{margin:4px 0 22px;color:#48616d}.panel{background:white;border:1px solid #ccdde4;border-radius:16px;padding:22px}header,footer,label{display:flex;align-items:center;gap:14px}header,footer{justify-content:space-between;flex-wrap:wrap}label{padding:15px 0;border-bottom:1px solid #e0eaee}label span{margin-left:auto;color:#48616d;text-align:right}input{width:19px;height:19px;accent-color:#006d70}button{border:0;background:#006d70;color:white;padding:10px 15px;border-radius:9px;font:inherit;cursor:pointer}button.secondary{background:#e7f4f4;color:#00575a}button:disabled{opacity:.55;cursor:default}footer{margin-top:20px}small{color:#48616d}#downloads{display:grid;gap:8px;margin-top:12px}a{color:#006568}
+</style>
+<main>
+<h1>Access to TOU</h1>
+<p>หน้าทดสอบด้วยข้อมูลจำลอง · <a href="https://github.com/Satitpae/Access-to-TOU#readme">ดาวน์โหลดโปรแกรมสำหรับไฟล์ Access จริง</a></p>
+<section class="panel">
+<header><strong>เดือนที่มีข้อมูล</strong><button class="secondary" id="toggle" type="button">เลือกทั้งหมด</button></header>
+<div id="months"></div>
+<footer><button id="export" type="button" disabled>Export .tou</button><small id="status" aria-live="polite"></small></footer>
+<div id="downloads"></div>
+</section>
+</main>
+<script type="application/json" id="dataset">[]</script>
+<script>
+const records = ['2026-11','2026-10'].map((month, n) => {
+  const bytes = new Uint8Array(64 + 3072 * 16);
+  const view = new DataView(bytes.buffer);
+  bytes.set(new TextEncoder().encode('TOUReg'));
+  view.setUint16(8,64,true);
+  bytes.set(new TextEncoder().encode('01/' + month.slice(5) + '/202600:00:00'),10);
+  for (let i=0;i<96;i++) {
+    view.setFloat64(64+i*16,40+i%20+n,true);
+    view.setFloat64(72+i*16,100000+i*10,true);
+  }
+  return {month,name:n ? 'D18Oct26.tou' : 'D18Nov26.tou',slots:96,data:btoa(String.fromCharCode(...bytes))};
+});
+const months = document.querySelector('#months');
+const downloads = document.querySelector('#downloads');
+const toggle = document.querySelector('#toggle');
+const status = document.querySelector('#status');
+const exportButton = document.querySelector('#export');
+const urls = [];
+const boxes = records.map(record => {
+  const row = document.createElement('label');
+  const box = document.createElement('input');
+  box.type = 'checkbox';
+  const month = document.createElement('strong');
+  month.textContent = record.month;
+  const detail = document.createElement('span');
+  detail.textContent = record.name + ' · ' + record.slots.toLocaleString() + ' ช่วง';
+  row.append(box, month, detail);
+  months.append(row);
+  return box;
+});
+function update() {
+  const count = boxes.filter(box => box.checked).length;
+  status.textContent = 'เลือก ' + count + ' เดือน · ข้าม 0 แถว · ซ้ำ 0 ช่อง';
+  exportButton.disabled = count === 0;
+  toggle.textContent = count === boxes.length ? 'ยกเลิกทั้งหมด' : 'เลือกทั้งหมด';
+  downloads.replaceChildren();
+  while (urls.length) URL.revokeObjectURL(urls.pop());
+}
+months.addEventListener('change', update);
+toggle.addEventListener('click', () => {
+  const select = boxes.some(box => !box.checked);
+  boxes.forEach(box => { box.checked = select; });
+  update();
+});
+exportButton.addEventListener('click', () => {
+  update();
+  const selected = records.filter((_, index) => boxes[index].checked);
+  for (const record of selected) {
+    const bytes = Uint8Array.from(atob(record.data), ch => ch.charCodeAt(0));
+    const link = document.createElement('a');
+    link.href = URL.createObjectURL(new Blob([bytes], {type:'application/octet-stream'}));
+    urls.push(link.href);
+    link.download = record.name;
+    link.textContent = 'ดาวน์โหลด ' + record.name;
+    downloads.append(link);
+  }
+  if (selected.length === 1) downloads.firstElementChild.click();
+});
+update();
+</script>
+</html>
