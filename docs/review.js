@@ -8,6 +8,8 @@
   let view = 'bill';
   let date = 'all';
   let filter = 'all';
+  let page = 0;
+  const pageSize = 96;
   const cache = new Map();
 
   function analyze(record) {
@@ -106,22 +108,26 @@
       root.innerHTML = '<p>แกนนอนแสดงวันที่ในเดือน ช่องว่างคือวันที่ไม่มีค่าที่คำนวณได้</p>'+graph(days,'energy','พลังงานรายวัน','kWh')+graph(days,'peak','Demand สูงสุดรายวัน','kW');
     } else {
       const controls='<div class="review-controls"><label>วันที่ <select id="review-day"><option value="all">ทั้งเดือน</option>'+days.map(d=>'<option>'+d.day+'</option>').join('')+'</select></label><label>สถานะ <select id="review-filter"><option value="all">ทั้งหมด</option><option value="missing">ขาดก่อนจุดล่าสุด</option><option value="pending">หลังจุดล่าสุด</option><option value="recorded">มีข้อมูล</option></select></label></div>';
-      const body = rows.map((r,i)=>{
-        const key=r.has?'recorded':i<=last?'missing':'pending';
-        if ((date!=='all' && date!==r.day) || (filter!=='all' && filter!==key)) return '';
+      const filtered = rows.map((row,index)=>({row,key:row.has?'recorded':index<=last?'missing':'pending'}))
+        .filter(({row,key})=>(date==='all'||date===row.day)&&(filter==='all'||filter===key));
+      const start = page*pageSize;
+      const body = filtered.slice(start,start+pageSize).map(({row:r,key})=>{
         const status=r.has?'มีข้อมูล':key==='missing'?'<span class="missing">ขาด</span>':'หลังจุดล่าสุด';
         return '<tr>'+cells([r.day,r.time,r.period,r.has?value(r.demand):'—',r.has?value(r.energy):'—',value(r.delta),status])+'</tr>';
       }).join('');
-      root.innerHTML=controls+table(['วันที่','เวลา','Period','kW','kWh สะสม','Δ kWh','สถานะ'],body || '<tr><td colspan="7">ไม่พบข้อมูลตามตัวกรอง</td></tr>');
+      const pager='<div class="review-controls"><button class="secondary" id="period-prev" '+(page===0?'disabled':'')+'>ก่อนหน้า</button><button class="secondary" id="period-next" '+(start+pageSize>=filtered.length?'disabled':'')+'>ถัดไป</button><span aria-live="polite">'+(filtered.length ? value(start+1)+'–'+value(Math.min(start+pageSize,filtered.length))+' / '+value(filtered.length)+' แถว' : '0 แถว')+'</span></div>';
+      root.innerHTML=controls+pager+table(['วันที่','เวลา','Period','kW','kWh สะสม','Δ kWh','สถานะ'],body || '<tr><td colspan="7">ไม่พบข้อมูลตามตัวกรอง</td></tr>');
+      root.querySelector('#period-prev').onclick=()=>{page--;render();};
+      root.querySelector('#period-next').onclick=()=>{page++;render();};
       const day = root.querySelector('#review-day'), state = root.querySelector('#review-filter');
       day.value=date;
       state.value=filter;
-      day.onchange=()=>{date=day.value;render();};
-      state.onchange=()=>{filter=state.value;render();};
+      day.onchange=()=>{date=day.value;page=0;render();};
+      state.onchange=()=>{filter=state.value;page=0;render();};
     }
   }
   for (const record of records) month.add(new Option(record.month,record.month));
-  month.onchange=()=>{date='all';render();};
+  month.onchange=()=>{date='all';page=0;render();};
   tabs.forEach(tab=>tab.onclick=()=>{view=tab.dataset.view;render();});
   render();
 })();
