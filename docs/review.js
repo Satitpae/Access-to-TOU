@@ -42,7 +42,7 @@
     let resets = 0;
     for (const [i,row] of rows.entries()) {
       const dayIndex = Math.floor(i/96);
-      if (i%96===0) days.push({day:row.day,energy:null,peak:null});
+      if (i%96===0) days.push({day:row.day,energy:null,onPeak:0,offPeak:0,peak:null});
       const daily = days[dayIndex];
       const group = totals[row.period];
       if (!row.has) {
@@ -57,6 +57,7 @@
       if (endEnergy < row.energy) { resets++; continue; }
       row.delta = endEnergy-row.energy;
       daily.energy = (daily.energy ?? 0)+row.delta;
+      daily[row.period==='On Peak' ? 'onPeak' : 'offPeak'] += row.delta;
       group.energy = (group.energy ?? 0)+row.delta;
     }
     const result = {rows,last:coverageEnd,days,totals,resets,year};
@@ -74,10 +75,16 @@
     const bars = days.map((d,i)=>{
       const n=d[field], x=44+i*step;
       const tick = i%5===0 || i===days.length-1 ? '<text x="'+(x+step/2)+'" y="123" text-anchor="middle">'+(i+1)+'</text>' : '';
+      if (field==='energy' && n!=null) {
+        const off=d.offPeak/max*85, on=d.onPeak/max*85;
+        const rect=(y,h,color,label,kwh)=>h>0 ? '<rect x="'+x+'" y="'+y+'" width="'+Math.max(1,step-3)+'" height="'+h+'" fill="'+color+'"><title>'+d.day+' · '+label+' '+value(kwh)+' kWh</title></rect>' : '';
+        return rect(104-off,off,'#007e82','Off Peak',d.offPeak)+rect(104-off-on,on,'#d76822','On Peak',d.onPeak)+tick;
+      }
       const h=n==null ? 0 : Math.max(1,n/max*85);
       return (n==null ? '' : '<rect x="'+x+'" y="'+(104-h)+'" width="'+Math.max(1,step-3)+'" height="'+h+'" fill="#007e82"><title>'+d.day+' · '+value(n)+' '+unit+'</title></rect>')+tick;
     }).join('');
-    return '<h3>'+title+'</h3><svg viewBox="0 0 '+width+' '+height+'" role="img" aria-label="'+title+' ('+unit+')"><g font-size="10" fill="#48616d"><text x="1" y="19">'+value(max)+'</text><text x="22" y="108">0</text><path d="M40 104H650" stroke="#a4bec8"/>'+bars+'</g></svg>';
+    const legend=field==='energy' ? '<p><span style="color:#007e82">■</span> Off Peak (รวม Holiday) &nbsp; <span style="color:#d76822">■</span> On Peak</p>' : '';
+    return '<h3>'+title+'</h3>'+legend+'<svg viewBox="0 0 '+width+' '+height+'" role="img" aria-label="'+title+' ('+unit+')"><g font-size="10" fill="#48616d"><text x="1" y="19">'+value(max)+'</text><text x="22" y="108">0</text><path d="M40 104H650" stroke="#a4bec8"/>'+bars+'</g></svg>';
   }
   function render() {
     const record = records.find(r=>r.month===month.value);
